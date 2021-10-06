@@ -1,3 +1,5 @@
+import os
+
 class read_convexhull:
     # 功能列表；[读取文件extended_convex_hull文件，按要求选取结构，获得结构对应的POSCAR文件，获得结构对应的ID、组成、FIT、总焓（每原子和每分子）]
     def __init__(self, filepath, POSpath, fitreq=0.0000, idlenth=4, datastart=3):
@@ -54,7 +56,7 @@ class read_convexhull:
             self.id.append(ID)
         return self.id
 
-    # 获取ID对应的POSCAR文件,返回字典，键为ID，值为对应的POSCAR，并写入到指定路径（rootpath=）的文件中
+    # 获取ID对应的POSCAR文件,返回字典，键为ID，值为对应的POSCAR，并写入到指定路径（rootpath=）的文件夹中
     def getPOSCARbyID(self,rootpath='.'):
         pos_dict = {}
         l = 0
@@ -92,10 +94,17 @@ class read_convexhull:
                     endloc.append(structurestart[eval(i)-1])
         for strat, end, id in zip(strloc, endloc, self.id):
             pos_dict[id] = self.readPOSCAR()[strat:end]
-        with open (rootpath,'w') as f:
-            for i in pos_dict.values():
-                for line in i:
+        os.mkdir(rootpath)  # 创建用于保存摘取出的POSCAR文件的文件夹,如果文件夹已存在，需要手动删除
+        filepath = rootpath
+        pathlist = []
+        # 写入POSCAR，每一条结构对应一个文件，文件名格式[ID]+组成
+        for comp,id,poscar in zip(self.getCompositions(),pos_dict.keys(),pos_dict.values()):
+            filepath = filepath+"["+id+"]"+comp
+            with open (filepath,'w') as f:
+                for line in poscar:
                     f.write(line)
+            pathlist.append(filepath)
+            filepath = rootpath
         return pos_dict
 
     # 取得每个结构的焓，以原子为单位，返回列表
@@ -142,75 +151,24 @@ class read_convexhull:
             self.totalEnergy.append(totalenergy)
         return self.totalEnergy
 
-# 自己写一个判断字符串是否为数字的函数
-def is_number(s):
-    try:
-        float(s)
-        return True
-    except ValueError:
-        pass
-
-    try:
-        import unicodedata
-        unicodedata.numeric(s)
-        return True
-    except (TypeError, ValueError):
-        pass
-
-    return False
-
-# 需要和read_ConvexHull中（以下简称rC）产生的数据结构联动
-def FormationEnCalc(idlist,moleEn,system,atomEn):
-    # idlist对应rC中getID()返回的结构ID列表
-    # moleEn指分子总焓，对应的是rC中getEnthalpies()返回的总焓列表
-    # system指体系的组成向量，对应rC中getTotalEnt()返回的组成向量列表
-    # atomEn指的是组成分子前每个原子的基态能量，需要自己手动写个字典传入，比如{Li:-2,C:-9}
-    # 形成焓计算公式deltaE(mAnB) = E(mAnB)-m*E(A)-n*E(B)
-    FEdict = {} #存放最终的ID-生成焓的对应字典
-    for id,comp,en in zip(idlist,system,moleEn):
-        # 计算体系中原子种类数和各原子种类对应的原子数目
-        FormationEn = en
-        complist = comp.split('_') # 按元素切割一下
-        #testlist.append(complist)
-        totalAtomNumber = 0
-        composition = ''  # 用于生成方便输入ASE的组成格式
-        for ele in complist:
-            element = ''  # 记录元素种类
-            number = ''  # 记录原子个数
-            for i in ele:
-                if i.isalpha():
-                    element += i
-                else:
-                    number += i
-            totalAtomNumber += eval(number)
-            composition += element+number
-            FormationEn -= atomEn[element]*eval(number)  #减去对应原子的基态能量
-        FEdict[composition]=FormationEn/totalAtomNumber
-    return FEdict
-
-
 #使用示例
 #传入convexhull文件和对应的poscar文件
 data_big = read_convexhull('./extended_convexhull_dir_big/extended_convexhull_LiCN-0GPa',
-                           './extended_convexhull_dir_big/gatheredPOSCARS_LiCN-0GPa')
-
+                           './extended_convexhull_dir_big/gatheredPOSCARS-0GPa')
+data_small = read_convexhull('./extended_convexhull_dir_small/extended_convexhull_LiCN-0GPa',
+                           './extended_convexhull_dir_small/gatheredPOSCARS-0GPa')
 
 data_big.readPOSCAR() #写入poscar
-selected_b=data_big.selectByFitness() #筛选结构
-ids_b = data_big.getID() #返回结构对应的ID
+data_small.readPOSCAR()
+data_big.selectByFitness() #筛选结构
+data_small.selectByFitness()
+data_big.getID() #返回结构对应的ID
+data_small.getID()
 #print(ids_b)
-sele_poscars_b = data_big.getPOSCARbyID(rootpath='./extended_convexhull_dir_big/poscar_selectedByid_0GPa') #返回对应的poscar字典并写入一个新的文件
+data_big.getCompositions()
+data_small.getCompositions()
+sele_poscars_b = data_big.getPOSCARbyID(rootpath='./extended_convexhull_dir_big/poscar_selectedByid_0GPa_big/') #返回对应的poscar字典并写入一个新的文件
+sele_poscars_s = data_small.getPOSCARbyID(rootpath='./extended_convexhull_dir_small/poscar_selectedByid_0GPa_small/')
+print(sele_poscars_b)
 #print(sele_poscars_b)
-idlist = data_big.getID()
-print(idlist)
-data_big.getEnthalpies()
-moleEn = data_big.getTotalEnt()
-print(moleEn)
-system = data_big.getCompositions()
-print(system)
-Li = -5.71243304/3
-C = -36.90068690/4
-N = -66.65389876/8
-atomEn = {'Li':Li,'C':C,'N':N}
-FEdict = FormationEnCalc(idlist=idlist,moleEn=moleEn,system=system,atomEn=atomEn)
-print(FEdict)
+
