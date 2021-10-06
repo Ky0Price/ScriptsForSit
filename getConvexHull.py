@@ -1,5 +1,3 @@
-import os
-
 class read_convexhull:
     # 功能列表；[读取文件extended_convex_hull文件，按要求选取结构，获得结构对应的POSCAR文件，获得结构对应的ID、组成、FIT、总焓（每原子和每分子）]
     def __init__(self, filepath, POSpath, fitreq=0.0000, idlenth=4, datastart=3):
@@ -52,12 +50,15 @@ class read_convexhull:
     # 取得目标结构的ID，返回列表
     def getID(self):
         for line in self.selected:
+            if len(self.id) >= len(self.selected):
+                break
             ID = 'EA' + line[0:self.idlenth].strip()  # 加上'EA'后方面后续与POSCAR文件对照与抓取
             self.id.append(ID)
         return self.id
 
     # 获取ID对应的POSCAR文件,返回字典，键为ID，值为对应的POSCAR，并写入到指定路径（rootpath=）的文件夹中
     def getPOSCARbyID(self,rootpath='.'):
+        import os
         pos_dict = {}
         l = 0
         strloc = []
@@ -94,7 +95,10 @@ class read_convexhull:
                     endloc.append(structurestart[eval(i)-1])
         for strat, end, id in zip(strloc, endloc, self.id):
             pos_dict[id] = self.readPOSCAR()[strat:end]
-        os.mkdir(rootpath)  # 创建用于保存摘取出的POSCAR文件的文件夹,如果文件夹已存在，需要手动删除
+        if os.path.exists(rootpath):
+            print('dir exists')
+        else:
+            os.mkdir(rootpath)  # 创建用于保存摘取出的POSCAR文件的文件夹,如果文件夹已存在，需要手动删除
         filepath = rootpath
         pathlist = []
         # 写入POSCAR，每一条结构对应一个文件，文件名格式[ID]+组成
@@ -110,13 +114,17 @@ class read_convexhull:
     # 取得每个结构的焓，以原子为单位，返回列表
     def getEnthalpies(self):
         for line in self.selected:
-            enthalpy = line[24:32] + "(eV/atom)"
+            if len(self.enthalpies) >= len(self.selected):
+                break
+            enthalpy = line[24:32]
             self.enthalpies.append(enthalpy)
         return self.enthalpies
 
     # 取得每个结构的fitness，返回列表
     def getFitness(self):
         for line in self.selected:
+            if len(self.fitness) >= len(self.selected):
+                break
             Fit = line[50:56] + "(ev/block)"
             self.fitness.append(Fit)
         return self.fitness
@@ -124,11 +132,13 @@ class read_convexhull:
     # 取得每个结构的组分
     def getCompositions(self):
         for line in self.selected:
+            if len(self.compositions) >= len(self.selected):
+                break
             comp_ini = line[7:18].strip().split(' ')
             for i in range(len(comp_ini) - 1, -1, -1):
                 if comp_ini[i] == '':
                     comp_ini.remove('')
-            self.compositions_ini.append(comp_ini)
+            #self.compositions_ini.append(comp_ini)
             comp_str = 'Li' + comp_ini[0] + '_C' + comp_ini[1] + '_N' + comp_ini[2]  # LiCN特供,其他体系自己搞定
             self.compositions.append(comp_str)
         return self.compositions
@@ -136,18 +146,23 @@ class read_convexhull:
     # 计算每个结构的总焓（分子式为单位）,再用这个之前必须运行一次getEnthalpies()
     def getTotalEnt(self):
         for line in self.selected:
+            if len(self.totalEnergy) >= len(self.selected):
+                break
             comp_ini = line[7:18].strip().split(' ')
             for i in range(len(comp_ini) - 1, -1, -1):
                 if comp_ini[i] == '':
                     comp_ini.remove('')
             self.compositions_ini.append(comp_ini)
         for compini, en in zip(self.compositions_ini, self.enthalpies):
+            if len(self.totalEnergy) >= len(self.selected):
+                break
             energy = eval(en[0:6])
             atom_num = 0
             for i in compini:
                 atom_num += eval(i)
             # totalenergy = str(atom_num * energy)[0:8] + '(ev/block)'
             totalenergy = atom_num * energy
+            #print(totalenergy)
             self.totalEnergy.append(totalenergy)
         return self.totalEnergy
 
