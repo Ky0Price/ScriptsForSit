@@ -103,7 +103,7 @@ class read_convexhull:
         pathlist = []
         # 写入POSCAR，每一条结构对应一个文件，文件名格式[ID]+组成
         for comp,id,poscar in zip(self.getCompositions(),pos_dict.keys(),pos_dict.values()):
-            filepath = filepath+"["+id+"]"+comp
+            filepath = filepath+id+'_'+comp+'.vasp'
             with open (filepath,'w') as f:
                 for line in poscar:
                     f.write(line)
@@ -165,25 +165,4 @@ class read_convexhull:
             #print(totalenergy)
             self.totalEnergy.append(totalenergy)
         return self.totalEnergy
-
-#使用示例
-#传入convexhull文件和对应的poscar文件
-data_big = read_convexhull('./extended_convexhull_dir_big/extended_convexhull_LiCN-0GPa',
-                           './extended_convexhull_dir_big/gatheredPOSCARS-0GPa')
-data_small = read_convexhull('./extended_convexhull_dir_small/extended_convexhull_LiCN-0GPa',
-                           './extended_convexhull_dir_small/gatheredPOSCARS-0GPa')
-
-data_big.readPOSCAR() #写入poscar
-data_small.readPOSCAR()
-data_big.selectByFitness() #筛选结构
-data_small.selectByFitness()
-data_big.getID() #返回结构对应的ID
-data_small.getID()
-#print(ids_b)
-data_big.getCompositions()
-data_small.getCompositions()
-sele_poscars_b = data_big.getPOSCARbyID(rootpath='./extended_convexhull_dir_big/poscar_selectedByid_0GPa_big/') #返回对应的poscar字典并写入一个新的文件
-sele_poscars_s = data_small.getPOSCARbyID(rootpath='./extended_convexhull_dir_small/poscar_selectedByid_0GPa_small/')
-print(sele_poscars_b)
-#print(sele_poscars_b)
 
